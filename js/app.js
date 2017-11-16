@@ -2,8 +2,9 @@ $(function() {
     positionX = 0;
     positionY = 0;
     moves = 0;
+    points = 0;
 
-    //animateTitle();
+    animateTitle();
     function animateTitle() {
         var state = true;
         setInterval(function() {
@@ -29,11 +30,14 @@ $(function() {
     function startGame() {
         var cantCandies = 4;
         moves=0;
+        points=0;
 
         $('#movimientos-text').html(moves);
+        $('#score-text').html(points);
         $('.panel-tablero').show();
-        $('.panel-score').attr('style', 'position: relative; ');
+        $('.panel-score').attr('style', 'position: relative; height: 700px;');
         $('.time').attr('style', 'display:block; ');
+        if($('#gameFinishTittle').length > 0){$('#gameFinishTittle').remove()};
 
         //create candies
         for(var i=1; i <= 7; i++){
@@ -59,7 +63,8 @@ $(function() {
                 });
             }
         }
-        setTimeout(function(){ init(); }, 3000);
+        setTimeout(function(){ initDragAndDrop(); verifyMove();
+        }, 3000);
     }
 
     function verifyMove(){
@@ -68,15 +73,16 @@ $(function() {
         limitx2 = 42;
         limity1 = 1;
         limity2 = 7;
+        var elementsWon = [];
         for (i = 1; i <= 49; i++) {
             var elementLeft = $('#'+(i-7) +" img").attr("src");
             var currentElement = $('#'+(i) +" img").attr("src");
             var elementRigth = $('#'+(i+7) +" img").attr("src");
             var elementTop = $('#'+(i-1) +" img").attr("src");
             var elementButtom = $('#'+(i+1) +" img").attr("src");
-
-            var elementsWon = [];
-
+            var elementsWonIteration = [];
+            var elementsWonVertically = [];
+            var elementsWonHorizontally = [];
 
             if(i <= 7 ){ elementLeft = ""; }
             if(i >= 43 ){ elementRigth = ""; }
@@ -136,7 +142,9 @@ $(function() {
                 }
                 next = true;
                 while($('#'+contx +" img").attr("src") == currentElement && next && (contx >= limitx1 && contx <= limitx2)){
-                    elementsWon.push(contx);
+                    points+=10;
+                    $('#score-text').html(points);
+                    elementsWonVertically.push(contx);
                     if($('#'+(Number(contx)+7)).length > 0)
                         contx +=7;
                     else{
@@ -144,8 +152,6 @@ $(function() {
                     }
                 }
             }
-            console.log(i,elementsWon);
-            elementsWon = [];
             if( currentElement == elementTop && currentElement == elementButtom){
                 won = 1;
                 conty = ($('#'+(i-1)).length > 0) ? (($('#'+(i-1) +" img").attr("src") == currentElement) ? (i-1) : i) : i;
@@ -161,10 +167,11 @@ $(function() {
                     else
                         next = false;
                 }
-                console.log(conty);
                 next = true;
                 while($('#'+conty +" img").attr("src") == currentElement && next  && (conty >= limity1 && conty <= limity2)){
-                    elementsWon.push(conty);
+                    points+=10;
+                    $('#score-text').html(points);
+                    elementsWonHorizontally.push(conty);
                     if($('#'+(Number(conty)+1)).length > 0)
                         conty++;
                     else{
@@ -172,16 +179,98 @@ $(function() {
                     }
                 }
             }
-            console.log(i,elementsWon);
 
+
+            $.each(elementsWonVertically, function(i, el){
+                if($.inArray(el, elementsWonIteration) === -1) elementsWonIteration.push(el);
+            });
+            $.each(elementsWonHorizontally, function(i, el){
+                if($.inArray(el, elementsWonIteration) === -1) elementsWonIteration.push(el);
+            });
+            elementsWon = elementsWon.concat(elementsWonIteration);
         }
+        eWon = [];
+        $.each(elementsWon, function(i, el){
+            if($.inArray(el, eWon) === -1) eWon.push(el);
+        });
+
+        if(eWon.length > 0) {
+            onPuntuation(eWon);
+        }else{
+            $('.candy').draggable( 'enable' );
+        }
+    }
+    
+    function onPuntuation(elementsWon) {
+        $.each(elementsWon, function( i, value ) {
+            for(var t=0; t<3;t++) {
+                $('#' + value).animate({
+                    opacity: 0,
+                }, 250);
+                $('#' + value).animate({
+                    opacity: 100,
+                }, 250);
+            }
+
+        });
+        setTimeout(function(){
+            $.each(elementsWon, function( i, value ) {
+                $('#'+value+" img").attr("src","");
+            });
+
+            for(column=0; column < 7; column++){
+                var element1 = (Number(7*column)+1);
+                if($('#'+element1+" img").attr("src") == ""){
+                    var x = Math.floor(Math.random() * 4) + 1;
+                    $('#'+element1+" img").attr("src","image/" + x + ".png");
+                    posx = $('#' + element1).offset().left;
+                    posy = $('#' + element1).offset().top;
+                    $("#" + element1).offset({top: 0, left: posx});
+                    parameters = {top: 0};
+
+                    $('#'+element1).animate(parameters,
+                        {easing: 'linear', duration: 1000, queue: false } );
+                }
+                row = 7;
+                for(c=(Number(element1 + 6)); c >= element1; c--) {
+                    setImg = false;
+                    if ($('#' + c + " img").attr("src") == "") {
+                        posy = 0;
+                        for (d = 1; d <= (row - 1); d++) {
+                            if ($('#' + (c - d) + " img").attr("src") != "" && setImg == false) {
+                                $('#' + (c) + " img").attr("src", $('#' + (c - d) + " img").attr("src"));
+                                $('#' + (c - d) + " img").attr("src", "");
+                                posy = $('#' + (c - d)).offset().top;
+                                setImg = true;
+                            }
+                        }
+                        if (!setImg) {
+                            var x = Math.floor(Math.random() * 4) + 1;
+                            $('#' + c + " img").attr("src", "image/" + x + ".png");
+                        }
+                        posx = $('#' + c).offset().left;
+
+                        $("#" + c).offset({top: posy, left: posx});
+                        parameters = {top: 0};
+                        $('#' + c).animate(parameters,
+                            {easing: 'linear', duration: 1000, queue: false});
+                    }
+                    row--;
+                }
+            }
+            setTimeout(function () {
+                verifyMove();
+            }, 1000);
+        }, 1500);
+
     }
 
     function endGame() {
+        $('.btn-reinicio').html("Iniciar");
         var duration = 1500;
         $('#timer').html(millisToMinutesAndSeconds(0));
 
-        $('.panel-score').attr('style', 'position: absolute; margin-left: 75%; margin-top: 9em;');
+        $('.panel-score').attr('style', 'position: absolute; margin-left: 75%; margin-top: 13em; height: 70vh;');
         $('.panel-tablero').hide("slide", { direction: "left", easing: 'linear', queue: false }, duration);
 
         $( ".panel-score" ).animate({
@@ -193,42 +282,25 @@ $(function() {
         $( ".time" ).effect( "size", { to: { width: 20, height: 20 } }, duration, function callback() {
             $( ".time" ).attr('style', 'display:none;');
         });
+        $('.panel-score').before('<div style="text-align: center" id="gameFinishTittle" class="main-titulo">Juego Terminado</div>');
     }
 
-
-    function millisToMinutesAndSeconds(millis) {
-        var minutes = Math.floor(millis / 60000);
-        var seconds = ((millis % 60000) / 1000).toFixed(0);
-        return "0" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds;
-    }
-
-    var myTimer = new Timer({
-        tick    : 1,
-        ontick  : function(ms) {
-            $('#timer').html(millisToMinutesAndSeconds(ms));
-        },
-        onend   : function() {
-            endGame();
-        }
-    });
-
-
+    $('.btn-reinicio').off('click');
     $('.btn-reinicio').on('click', function () {
         if($('.btn-reinicio').html() == "Iniciar"){
             $('.btn-reinicio').html("Reiniciar");
             myTimer.stop();
-            myTimer.start(12000);
+            myTimer.start(120);
             startGame();
         }
         else {
-            $('.btn-reinicio').html("Iniciar");
             myTimer.stop();
             endGame();
         }
     });
 
 
-    function init() {
+    function initDragAndDrop() {
         for (i = 1; i <= 49; i++) {
 
             $('#' + i).off('mousedown');
@@ -237,23 +309,15 @@ $(function() {
                 positionY = $(this).offset().top;
             });
 
-            x1 = Number($('#' + i).offset().left) - Number($($('.candy')[0]).width());
-            y1 = Number($('#' + i).offset().top) - Number($($('.candy')[0]).height());
-            x2 = Number($('#' + i).offset().left) + Number($($('.candy')[0]).width());
-            y2 = Number($('#' + i).offset().top) + Number($($('.candy')[0]).height());
+            x1 = $('#' + (i-7)).length > 0 ? Number($('#' + (i-7)).offset().left) : Number($('#' + (1)).offset().left);
+            y1 = $('#' + (i-1)).length > 0 ? Number($('#' + (i-1)).offset().top) : Number($('#' + (1)).offset().top);
+            x2 = $('#' + (i+7)).length > 0 ? Number($('#' + (i+7)).offset().left) : Number($('#' + (49)).offset().left);
+            y2 = $('#' + (i+1)).length > 0 ? Number($('#' + (i+1)).offset().top) : Number($('#' + (49)).offset().top);
 
-            if (x1 < Number($('#' + 1).offset().left)) {
-                x1 = Number($('#' + 1).offset().left);
-            }
-            if (x2 > Number($('#' + 49).offset().left)) {
-                x2 = Number($('#' + 49).offset().left);
-            }
-            if (y1 < Number($('#' + 1).offset().top)) {
-                y1 = Number($('#' + 1).offset().top);
-            }
-            if (y2 > Number($('#' + 49).offset().top)) {
-                y2 = Number($('#' + 49).offset().top);
-            }
+            if(((Number(i)-1) % 7) == 0 ){ y1 = $('#' + i).offset().top; }
+            if((i % 7) == 0){ y2 = $('#' + i).offset().top; }
+            if(i >= 1 && i <= 7){ x1 = $('#' + i).offset().left; }
+            if(i >= 43 && i <= 49){ x2 = $('#' + i).offset().left; }
 
             $('#' + i).draggable({
                 cursor: 'move',
@@ -267,9 +331,16 @@ $(function() {
                 dragElement = ui.draggable[0].id;
                 dropElement = this.id;
 
-                if (dropElement == (Number(dragElement)+1) || dropElement == (dragElement-1)
-                    || dropElement == (Number(dragElement)+7) || dropElement == (dragElement-7)){
+                var objectButtom = (Number(dragElement)+1);
+                var objectTop = (Number(dragElement)-1);
+                var objectLeft= (Number(dragElement)-7);
+                var objectRigth = (Number(dragElement)+7);
+
+                if (dropElement == objectButtom || dropElement == objectTop
+                    || dropElement == objectRigth || dropElement == objectLeft){
+
                     ui.draggable.draggable({ revert: "invalid"});
+                    $('.candy').draggable( 'disable' );
 
                     moves++;
                     $('#movimientos-text').html(moves);
@@ -277,91 +348,57 @@ $(function() {
                     //cambiar posicion
                     img1 = $('#'+dragElement+" img").attr("src");
                     img2 = $('#'+dropElement+" img").attr("src");
-                    //abajo
-                    if(dropElement == (Number(dragElement)+1)){
-                        $('#'+dropElement).animate({
-                            top: -($('#'+dropElement).offset().top - positionY),
-                            queue: false
-                        },  {easing: 'linear', duration: 1000, queue: false, complete: function() {
-                            cordx1 = $('#'+dragElement).offset().left;
-                            cordy1 = $('#'+dragElement).offset().top;
-                            cordx2 = $('#'+dropElement).offset().left;
-                            cordy2 = $('#'+dropElement).offset().top;
 
-                            $("#"+dragElement).offset({ top: cordy2 , left: cordx2});
-                            $("#"+dropElement).offset({ top: cordy1 , left: cordx1});
-                            $('#'+dragElement+" img").attr("src", img2);
-                            $('#'+dropElement+" img").attr("src", img1);
-                            verifyMove();
-                        } } );
-                    }
-                    //arriba
-                    if(dropElement == (Number(dragElement)-1)){
-                        $('#'+dropElement).animate({
-                            top: Number(positionY) - $('#'+dropElement).offset().top,
-                            queue: false
-                        },  {easing: 'linear', duration: 1000, queue: false, complete: function() {
-                            cordx1 = $('#'+dragElement).offset().left;
-                            cordy1 = $('#'+dragElement).offset().top;
-                            cordx2 = $('#'+dropElement).offset().left;
-                            cordy2 = $('#'+dropElement).offset().top;
+                    var parameters = {};
+                    var afterMoveElement = function () {
+                        cordx1 = $('#'+dragElement).offset().left;
+                        cordy1 = $('#'+dragElement).offset().top;
+                        cordx2 = $('#'+dropElement).offset().left;
+                        cordy2 = $('#'+dropElement).offset().top;
 
-                            $("#"+dragElement).offset({ top: cordy2 , left: cordx2});
-                            $("#"+dropElement).offset({ top: cordy1 , left: cordx1});
-                            $('#'+dragElement+" img").attr("src", img2);
-                            $('#'+dropElement+" img").attr("src", img1);
-                            verifyMove();
-                        } } );
-                    }
-                    //izquierda
-                    if(dropElement == (Number(dragElement)-7)){
-                        $('#'+dropElement).animate({
-                            left: -($('#'+dropElement).offset().left - positionX),
-                            queue: false
-                        },  {easing: 'linear', duration: 1000, queue: false, complete: function() {
-                            cordx1 = $('#'+dragElement).offset().left;
-                            cordy1 = $('#'+dragElement).offset().top;
-                            cordx2 = $('#'+dropElement).offset().left;
-                            cordy2 = $('#'+dropElement).offset().top;
-
-                            $("#"+dragElement).offset({ top: cordy2 , left: cordx2});
-                            $("#"+dropElement).offset({ top: cordy1 , left: cordx1});
-                            $('#'+dragElement+" img").attr("src", img2);
-                            $('#'+dropElement+" img").attr("src", img1);
-                            verifyMove();
-                        }} );
-                    }
-                    //derecha
-                    if(dropElement == (Number(dragElement)+7)){
-                        $('#'+dropElement).animate({
-                            left: Number(positionX) - $('#'+dropElement).offset().left,
-                            queue: false
-                        },  {easing: 'linear', duration: 1000, queue: false, complete: function() {
-                            cordx1 = $('#'+dragElement).offset().left;
-                            cordy1 = $('#'+dragElement).offset().top;
-                            cordx2 = $('#'+dropElement).offset().left;
-                            cordy2 = $('#'+dropElement).offset().top;
-
-                            $("#"+dragElement).offset({ top: cordy2 , left: cordx2});
-                            $("#"+dropElement).offset({ top: cordy1 , left: cordx1});
-                            $('#'+dragElement+" img").attr("src", img2);
-                            $('#'+dropElement+" img").attr("src", img1);
-                            verifyMove();
-                        } } );
+                        $("#"+dragElement).offset({ top: cordy2 , left: cordx2});
+                        $("#"+dropElement).offset({ top: cordy1 , left: cordx1});
+                        $('#'+dragElement+" img").attr("src", img2);
+                        $('#'+dropElement+" img").attr("src", img1);
+                        verifyMove();
                     }
 
+                    if(dropElement == objectButtom){
+                        parameters = {top: -($('#'+dropElement).offset().top - positionY), queue: false};
+                    }
+                    if(dropElement == objectTop){
+                        parameters = {top: Number(positionY) - $('#'+dropElement).offset().top, queue: false};
+                    }
+                    if(dropElement == objectLeft){
+                        parameters = {left: -($('#'+dropElement).offset().left - positionX), queue: false};
+                    }
+                    if(dropElement == objectRigth){
+                        parameters = {left: Number(positionX) - $('#'+dropElement).offset().left, queue: false};
+                    }
 
+                    $('#'+dropElement).animate(parameters,
+                        {easing: 'linear', duration: 1000, queue: false, complete: afterMoveElement } );
 
                     $("#"+dragElement).offset({ top: $('#'+dropElement).offset().top , left: $('#'+dropElement).offset().left});
                 } else {
                     ui.draggable.draggable({ revert: true  });
-
                 }
             },
         });
-
     }
 
+    var myTimer = new Timer({
+        tick    :1,ontick  : function(ms) {
+            $('#timer').html(millisToMinutesAndSeconds(ms));
+        },
+        onend   : function() {
+            endGame();
+        }
+    });
 
-
+    function millisToMinutesAndSeconds(millis) {
+        var minutes = Math.floor(millis / 60000);
+        var seconds = ((millis % 60000) / 1000).toFixed(0);
+        return "0" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds;
+    }
 } );
